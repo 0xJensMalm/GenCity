@@ -1,3 +1,5 @@
+let buildings = [];
+
 let gridSize = 20; // 20x20 grid
 let cellSize = 40;
 let grid;
@@ -12,6 +14,10 @@ function setup() {
 function draw() {
   background(255);
   drawGrid();
+  // Display all buildings
+  for (let building of buildings) {
+    building.display();
+  }
 }
 
 function initializeGrid(size) {
@@ -121,4 +127,8 @@ function placeBuilding(x, y, size) {
       }
     }
   }
+
+  // Generate a building object and add it to the buildings array
+  const building = generateBuilding(x, y, size);
+  buildings.push(building); // Assume 'buildings' is a globally accessible array in 'sketch.js'
 }
