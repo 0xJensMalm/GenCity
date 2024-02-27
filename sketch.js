@@ -1,52 +1,70 @@
-let gridSize = 20; // 20x20 grid
-let cellSize = 40;
+let buildings = [];
+let cellSize = 20;
+let diagonalGridSize; // This will be calculated based on the canvas size and rotation
 let grid;
 
 function setup() {
   createCanvas(800, 800);
-  noLoop();
-  grid = initializeGrid(gridSize);
+  angleMode(DEGREES);
+  // Calculate effective grid size for diagonal layout
+  diagonalGridSize = ceil(sqrt(sq(width) + sq(height)) / cellSize) * 2;
+  grid = initializeGrid(diagonalGridSize);
   fillGridWithBuildings();
+  noLoop();
 }
 
 function draw() {
   background(255);
-  drawGrid();
+
+  push(); // Start a new drawing state
+  translate(width / 2, height / 2);
+  rotate(45); // Rotate the grid by 45 degrees
+
+  drawGrid(); // Draw the rotated grid
+
+  pop(); // Restore original state
 }
 
 function initializeGrid(size) {
   let grid = new Array(size);
   for (let i = 0; i < size; i++) {
-    grid[i] = new Array(size).fill("potential"); // Mark all as potential building spaces initially
+    grid[i] = new Array(size).fill(null);
   }
   return grid;
 }
 
 function drawGrid() {
-  for (let x = 0; x < gridSize; x++) {
-    for (let y = 0; y < gridSize; y++) {
+  for (let x = 0; x < diagonalGridSize; x++) {
+    for (let y = 0; y < diagonalGridSize; y++) {
       stroke(0);
       if (grid[x][y] === "building") {
-        fill("green"); // Building cell
+        fill("green");
+      } else if (grid[x][y] === "road") {
+        fill("grey");
       } else {
-        fill("grey"); // Road cell
+        noFill(); // No fill for unassigned cells
       }
-      rect(x * cellSize, y * cellSize, cellSize, cellSize);
+      rect(
+        (x - diagonalGridSize / 2) * cellSize,
+        (y - diagonalGridSize / 2) * cellSize,
+        cellSize,
+        cellSize
+      );
     }
   }
 }
 
 function fillGridWithBuildings() {
   let attempts = 0;
-  let maxAttempts = 100; // Adjust based on testing
+  let maxAttempts = 100;
   let sizeOptions = 6; // Number of building size options
 
   while (attempts < maxAttempts) {
     let buildingSize = randomBuildingSize();
     let placed = false;
 
-    for (let x = 0; x < gridSize; x++) {
-      for (let y = 0; y < gridSize; y++) {
+    for (let x = 0; x < diagonalGridSize; x++) {
+      for (let y = 0; y < diagonalGridSize; y++) {
         if (checkSpace(x, y, buildingSize)) {
           placeBuilding(x, y, buildingSize);
           placed = true;
@@ -59,8 +77,7 @@ function fillGridWithBuildings() {
     if (!placed) {
       attempts++;
       if (attempts % (maxAttempts / sizeOptions) == 0) {
-        // Try a smaller building size after every (maxAttempts / sizeOptions) failed attempts
-        sizeOptions = max(1, sizeOptions - 1); // Ensure sizeOptions doesn't go below 1
+        sizeOptions = max(1, sizeOptions - 1);
       }
     } else {
       attempts = 0; // Reset attempts if a building was placed
@@ -83,41 +100,42 @@ function randomBuildingSize() {
 }
 
 function checkSpace(x, y, size) {
-  // Only check the starting point is within the grid
-  if (x < 0 || x >= gridSize || y < 0 || y >= gridSize) {
-    return false; // Starting point is out of bounds
+  if (
+    x < 0 ||
+    x + size.w > diagonalGridSize ||
+    y < 0 ||
+    y + size.h > diagonalGridSize
+  ) {
+    return false; // Out of bounds or not enough space
   }
 
-  // Check surrounding space within the grid boundaries
-  for (let i = max(0, x - 1); i <= min(x + size.w, gridSize - 1); i++) {
-    for (let j = max(0, y - 1); j <= min(y + size.h, gridSize - 1); j++) {
-      if (grid[i][j] === "building") {
-        return false; // Adjacent to a building
+  for (let i = x; i < x + size.w; i++) {
+    for (let j = y; j < y + size.h; j++) {
+      if (grid[i][j] !== null) {
+        return false; // Space is not empty
       }
     }
   }
-  return true; // Space is available
+  return true;
 }
 
 function placeBuilding(x, y, size) {
-  // Mark the building cells within the grid boundaries
-  for (let i = 0; i < size.w; i++) {
-    for (let j = 0; j < size.h; j++) {
-      if (x + i < gridSize && y + j < gridSize) {
-        // Check if within grid bounds
-        grid[x + i][y + j] = "building";
-      }
+  for (let i = x; i < x + size.w; i++) {
+    for (let j = y; j < y + size.h; j++) {
+      grid[i][j] = "building";
     }
   }
 
-  // Mark the perimeter as road, ensuring exactly one cell of road around the building within grid boundaries
-  for (let i = x - 1; i <= x + size.w; i++) {
-    for (let j = y - 1; j <= y + size.h; j++) {
-      if (i >= 0 && i < gridSize && j >= 0 && j < gridSize) {
-        // Check if within grid bounds
-        if (grid[i][j] !== "building") {
-          grid[i][j] = "road"; // Mark as road if it's not part of a building
-        }
+  // Optionally, mark the roads around the building
+  // This part can be adjusted based on how you want to handle the roads
+  for (let i = max(x - 1, 0); i <= min(x + size.w, diagonalGridSize - 1); i++) {
+    for (
+      let j = max(y - 1, 0);
+      j <= min(y + size.h, diagonalGridSize - 1);
+      j++
+    ) {
+      if (grid[i][j] !== "building") {
+        grid[i][j] = "road";
       }
     }
   }
